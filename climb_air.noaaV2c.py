@@ -26,8 +26,8 @@ sourceData='/home/msantolaria/Documents/Data/'
 iyr=1960
 fyr=2014
 
-domain='NAEext'
-season=sys.argv[1]
+domain='global'
+season='JJA'#sys.argv[1]
 exp='obs'
 
 model='noaaV2c'

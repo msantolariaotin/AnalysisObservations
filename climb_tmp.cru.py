@@ -25,10 +25,10 @@ sourceData='/home/msantolaria/Documents/Data/'
 
 
 iyr=1960
-fyr=2015
+fyr=2020
 
-domain='HK'#sys.argv[2]
-season=sys.argv[1]#'DJF'
+domain='NHEast'#sys.argv[2]
+season='JJA'#sys.argv[1]#'DJF'
 exp='obs'
 
 variable='tmp'

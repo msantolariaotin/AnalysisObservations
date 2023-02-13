@@ -1,6 +1,6 @@
 '''
-for s in DJF MAM JJA SON;do
-python climb_sst.HadISST.py ${s} 
+for season in DJF ;do
+python climb_rfl.noaaV2c.py ${season}
 done
 '''
 import sys
@@ -14,6 +14,8 @@ from eofs.xarray import Eof
 from myplot import *
 import obsinfo as obs
 from obsinfo import *
+import matplotlib.cm as cm
+import matplotlib.cm as cm
 
 
 
@@ -27,27 +29,27 @@ sourceData='/home/msantolaria/Documents/Data/'
 iyr=1960
 fyr=2014
 
-domain='NINO34'
-#season='JF'
+domain='NH'
 season=sys.argv[1]
 exp='obs'
 
-data='HadISST'
-model='HadISST'
-variable='sst'
-info=obs.get_obs(variable,data)
+model='noaaV2c'
+variable='rfl'
+#info=obs.get_obs(variable,model)
 
-print(info)
-fileName=info.get('filename')
-ds_fill= xr.open_dataset(sourceData+data+'/'+fileName)
+fileNameS='swrfl.mon.mean.noaaV2c_185101-201412.nc'#info.get('filename')[0]
+fileNameL='lwrfl.mon.mean.noaaV2c_185101-201412.nc'#info.get('filename')[1]
+
+dsS= xr.open_dataset(sourceData+model+'/'+fileNameS)['dswrf']
+dsL=xr.open_dataset(sourceData+model+'/'+fileNameL)['dlwrf']
+ds=dsS+dsL
 # replace all values equal to -1000 with np.nan
-ds = ds_fill[variable].where(ds_fill[variable] != -1000.)
-if info.get('gridlon')=='0_360':
-    ds=dom.shifting_grid(ds)
+#ds = ds_fill[variable].where(ds_fill[variable] != -1000.)
+ds=dom.shifting_grid(ds)
 lat,lon=climb.latlon(ds)
 ylat=ds.coords[lat]
 xlon=ds.coords[lon]
-unit=ds.units
+units='W m²'#info.get('units')
 
 field=dom.field_dom(ds,domain)
 
@@ -60,7 +62,7 @@ else:
 ###
 ##Detrended anomalies
 ###
-anoms_detrend=climb.detrend_dim(vals, 'time', deg=2)
+anoms_detrend=climb.detrend_dim(vals, 'time', deg=1)
 ###
 ##Clim and std dev
 ###
@@ -68,13 +70,10 @@ clim=vals.mean('time')
 std=anoms.std('time')
 std_det=anoms_detrend.std('time')
 
-anoms_norm=anoms_detrend/std_det
 ###
 ##Spatial trend
 ###
-'''
-#par=climb.trend_vect(anoms.time,anoms,'time')
-par=climb.trend_vect(np.arange(0,anoms.shape[0],1),anoms,'time')
+par=climb.trend_vect(anoms.time,anoms,'time')
 trend=par[0]
 intercept=par[1]
 rvalue=par[2]
@@ -93,17 +92,17 @@ rs=math.sqrt((t*t)/(t*t + df))
 ###
 ratio=10*abs(trend)/std_det
 
-'''
+
 ###
 ##Plotting
 ###
-infoplot=myplot.get_var_infos(variable)
+infoplot=myplot.get_var_infos('thf')
 cmapClim=infoplot.get('cmap')
 units=infoplot.get('units')
-clevsClim=infoplot.get('levels')
+clevsClim=np.arange(0,20,2)#infoplot.get('levels')
 
-cmapStd=infoplot.get('cmap_std')
-clevsStd=infoplot.get('levels_std')
+cmapStd='GnBu'
+clevsStd=np.arange(0,20,2)#infoplot.get('levels_std')
 
 clevsT=infoplot.get('levels_diff')
 cmapT=infoplot.get('cmap_diff')
@@ -139,21 +138,22 @@ gl.set_yformatter = LatitudeFormatter
 gl.set_xlabel_style = {'color': 'black'}
 gl.set_xlabel_style = {'color': 'black'}
 # Adjust the location of the subplots on the page to make room for the colorbar
-fig.subplots_adjust(bottom=0.35, top=0.8, left=0.20, right=0.80,
+fig.subplots_adjust(bottom=0.35, top=0.7, left=0.20, right=0.80,
                 wspace=0.05, hspace=0.5)
+# Add a colorbar axis at the bottom of the graph
+#([xmin,ymin,dx,dy])
 cbar_ax = fig.add_axes([0.2, 0.35, 0.6, 0.02])
-ytitle=0.78
 # Draw the colorbar
 cbar=fig.colorbar(CS1, cax=cbar_ax,orientation='horizontal',label='%s'%(units))
 ## Add a big title at the top
 ofileC='clim_'+variable+'_'+model+'_'+exp+'_'+domain+'_'+season+'_'+str(iyr)+'_'+str(fyr)
-plt.suptitle(ofileC,y=ytitle)
+plt.suptitle(ofileC,y=0.68)
 fig.savefig(plotsDir+ofileC+'.png',format='png',bbox_inches='tight')
 print('Figure save at ',plotsDir, 'as',ofileC)
 #plt.show()
-####
+# In[21]:
 
-
+###
 ##STD det
 ###
 fig,axs= plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()},figsize=(8,10))
@@ -177,19 +177,22 @@ gl.set_yformatter = LatitudeFormatter
 gl.set_xlabel_style = {'color': 'black'}
 gl.set_xlabel_style = {'color': 'black'}
 # Adjust the location of the subplots on the page to make room for the colorbar
-fig.subplots_adjust(bottom=0.35, top=0.8, left=0.20, right=0.80,
+fig.subplots_adjust(bottom=0.35, top=0.7, left=0.20, right=0.80,
                 wspace=0.05, hspace=0.5)
+# Add a colorbar axis at the bottom of the graph
+#([xmin,ymin,dx,dy])
 cbar_ax = fig.add_axes([0.2, 0.35, 0.6, 0.02])
-ytitle=0.78
+# Draw the colorbar
 cbar=fig.colorbar(CS1, cax=cbar_ax,orientation='horizontal',label='%s'%(units))
 ## Add a big title at the top
 ofileSdet='anoms_det_std_'+variable+'_'+model+'_'+exp+'_'+domain+'_'+season+'_'+str(iyr)+'_'+str(fyr)
-plt.suptitle(ofileSdet,y=ytitle)
+plt.suptitle(ofileSdet,y=0.68)
 fig.savefig(plotsDir+ofileSdet+'.png',format='png',bbox_inches='tight')
 print('Figure save at ',plotsDir, 'as',ofileSdet)
 #plt.show()
 
-'''
+
+###
 ##Spatial trend
 ###
 fig,axs= plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()},figsize=(8,10))
@@ -230,9 +233,7 @@ plt.suptitle(ofileT,y=0.68)
 fig.savefig(plotsDir+ofileT+'.png',format='png',bbox_inches='tight')
 print('Figure save at ',plotsDir, 'as',ofileT)
 #plt.show()
-
-
-##
+###
 ##Ratio
 ###
 fig,axs= plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()},figsize=(8,10))
@@ -270,19 +271,14 @@ plt.suptitle(ofileSdet,y=0.68)
 fig.savefig(plotsDir+ofileSdet+'.png',format='png',bbox_inches='tight')
 print('Figure save at ',plotsDir, 'as',ofileSdet)
 #plt.show()
-'''
+
+
 
 ##Computing time series of seasonal spatial average ----------------------------
 print('Computing time series of seasonal spatial average')
 ts_season=climb.spatial_average(anoms)
-plotnameTs='timeseries_anoms_'+variable+'_'+model+'_'+exp+'_'+domain+'_'+season+'_'+str(iyr)+'-'+str(fyr)
+plotnameTs='timeseries_anoms_'+variable+'_'+model+'_'+exp+'_'+domain+'_'+season+'_'+str(iyr)+'_'+str(fyr)
 np.savetxt(resultsDir+plotnameTs+'.txt',ts_season)
-#print('saving .txt at',resultsDir+plotnameTs)
-
-print('Computing time series of seasonal spatial average')
-ts_season_norm=climb.spatial_average(anoms_norm)
-plotnameTs='timeseries_anoms_norm_'+variable+'_'+model+'_'+exp+'_'+domain+'_'+season+'_'+str(iyr)+'-'+str(fyr)
-np.savetxt(resultsDir+plotnameTs+'.txt',ts_season_norm)
 #print('saving .txt at',resultsDir+plotnameTs)
 
 ##Trends---------------------------------------
@@ -303,7 +299,6 @@ print(xd,my_ticks)
 ticks=np.arange(iyr,fyr+1,1)
 #ax.plot(xd,ts_season,color='b', linewidth=2)
 ax.plot(xd, ts_season, 'b:')
-ax.plot(xd,ts_season_norm,'red')
 #ax.plot(xd, parmed[1] + parmed[0] * xd, 'r-',label="%s (%.2f)" % ('Theil-Sen', 10*parmed[0]))
 #ax.plot(xd, parmed[1] + parmed[2] * xd, 'r--')
 #ax.plot(xd, parmed[1] + parmed[3] * xd, 'r--')
@@ -319,7 +314,7 @@ freq=5
 plt.xticks(xd,my_ticks, rotation='vertical')
 plt.legend()
 plt.savefig(plotsDir+plotnameTs+'.png',format='png',bbox_inches='tight')
-#plt.show()
+plt.show()
 print('save at', resultsDir,plotnameTs)
 '''
 textfile = open(resultsDirTs+'trends_'+plotnameTs, "w")

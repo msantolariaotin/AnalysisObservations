@@ -22,8 +22,8 @@ sourceData='/home/msantolaria/Documents/Data/'
 iyr=1960
 fyr=2019
 
-domain='NH'
-season='DJF'
+domain='NHEast'
+season='JJA'
 exp='obs'
 
 data='gpcc'

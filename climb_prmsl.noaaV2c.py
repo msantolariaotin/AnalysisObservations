@@ -1,5 +1,5 @@
 '''
-for season in DJF JFM;do
+for season in DJF MAM JJA SON;do
 python climb_prmsl.noaaV2c.py ${season}
 done
 '''
@@ -27,10 +27,13 @@ sourceData='/home/msantolaria/Documents/Data/'
 iyr=1960
 fyr=2014
 
-domain='NAEext'
+domain='NH'
 season=sys.argv[1]
+if season=='DJF':
+    iyr=iyr-1
 exp='obs'
 
+print(iyr,fyr)
 model='noaaV2c'
 variable='prmsl'
 info=obs.get_obs(variable,model)
