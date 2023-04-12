@@ -1,6 +1,7 @@
 '''
 for rmon in mon01 mon02 mon03 mon04 mon05 mon06 mon07 mon08 mon09 mon10 mon11 mon12;do
-python climb_snc.noaacdr.py ${rmon}
+for rmon in DJF MAM JJA SON;do 
+python climb_tmp.cru.py ${rmon}
 done
 '''
 import sys
@@ -17,6 +18,8 @@ from obsinfo import *
 
 
 
+
+
 source='/home/msantolaria/Documents/MyResearch/AnalysisObservations/'
 resultsDir=source + 'Results/'
 plotsDir=source + 'Plots/'
@@ -24,28 +27,30 @@ plotsDir=source + 'Plots/'
 sourceData='/home/msantolaria/Documents/Data/'
 
 
-iyr=1980
-fyr=2019
+iyr=1900
+fyr=2010
 
-domain='NH'
-#season='DJF'
-season='MAM'#sys.argv[1]
+domain='NH'#sys.argv[2]
+season='DJF'#sys.argv[1]#'DJF'
 exp='obs'
 
-variable='snc'
-model='noaacdr'
-info=obs.get_obs('snc',model)
+model='noaaV2c'
+variable='u300'
+info=obs.get_obs('uwnd',model)
 
 print(info)
-filename=info.get('filename')
-ds0 = xr.open_dataset(sourceData+model+'/'+filename)
-dsall=ds0['snow_cover_extent']
-mask=ds0['land']
-ds=dsall.where(mask==1)
-ds=100*ds
-units='%'#ds.units
-
+fileName='u300.mon.mean.noaaV2_185101-201412.nc'#info.get('filename')
+ds0= xr.open_dataset(sourceData+model+'/'+fileName)['uwnd']
+# replace all values equal to -1000 with np.nan
+#ds = ds_fill[variable].where(ds_fill[variable] != -1000.)
+ds=ds0[:,0,:,:]
+ds=dom.shifting_grid(ds)
+lat,lon=climb.latlon(ds)
+ylat=ds.coords[lat]
+xlon=ds.coords[lon]
+unit=ds.units
 field=dom.field_dom(ds,domain)
+
 
 if season[0]=='m':
     rmon=int(season.split('mon')[1])
@@ -56,7 +61,7 @@ else:
 ###
 ##Detrended anomalies
 ###
-anoms_detrend=climb.detrend_dim(vals, 'time', deg=1)
+anoms_detrend=climb.detrend_dim(vals, 'time', deg=2)
 ###
 ##Clim and std dev
 ###
@@ -73,7 +78,8 @@ if season[0]=='m':
 else:
     par=climb.trend_vect(anoms.time,anoms,'time')
 trend=par[0]
-
+intercept=par[1]
+rvalue=par[2]
 pvalue=par[3]
 stderr=par[4]
 
@@ -86,18 +92,20 @@ ratio=10*abs(trend)/std_det
 ###
 ##Plotting
 ###
-cmapClim='YlGnBu'#infoplot.get('cmap')
-units='%'#infoplot.get('units')
-clevsClim=np.arange(0,100,10)#infoplot.get('levels')
+infoplot=myplot.get_var_infos('uwnd')
+cmapClim=infoplot.get('cmap')
+units=infoplot.get('units')
+#clevsClim=np.arange(int(np.min(clim.values)),int(np.max(clim.values)),int()#infoplot.get('levels')
 
-cmapStd='rainbow'#infoplot.get('cmap_std')
-clevsStd=np.arange(0,10,1)#infoplot.get('levels_std')
+cmapStd=infoplot.get('cmap_std')
+clevsStd=infoplot.get('levels_std')
 
-clevsT=np.arange(-2,2.1,0.1)#infoplot.get('levels_diff')
-cmapT='bwr'#infoplot.get('cmap_diff')
+clevsT=infoplot.get('levels_diff')
+cmapT=infoplot.get('cmap_diff')
 
 clevsRatio=np.arange(0,1.1,0.1)
 cmapRatio='OrRd'
+extend=infoplot.get('extend')
 extentTF=False
 
 ###
@@ -109,7 +117,7 @@ fig,axs= plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()},figsize=(8,1
 
 lat,lon=climb.latlon(clim)
 lons, lats = np.meshgrid(clim[lon] ,clim[lat])
-CS1=axs.contourf(lons,lats, clim,clevsClim,
+CS1=axs.contourf(lons,lats, clim,#clevsClim,
             transform=ccrs.PlateCarree(),
             cmap=cmapClim,extent='both')
 # Draw the coastines for each subplot
@@ -141,7 +149,7 @@ print('Figure save at ',plotsDir, 'as',ofileC)
 fig,axs= plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()},figsize=(8,10))
 lat,lon=climb.latlon(clim)
 lons, lats = np.meshgrid(std[lon] ,std[lat])
-CS1=axs.contourf(lons,lats, std,clevsStd,
+CS1=axs.contourf(lons,lats, std,#clevsStd,
             transform=ccrs.PlateCarree(),
             cmap=cmapStd,extent='both')
 # Draw the coastines for each subplot
@@ -174,7 +182,7 @@ fig,axs= plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()},figsize=(8,1
 
 lat,lon=climb.latlon(clim)
 lons, lats = np.meshgrid(std[lon] ,std[lat])
-CS1=axs.contourf(lons,lats, std_det,clevsStd,
+CS1=axs.contourf(lons,lats, std_det,#clevsStd,
             transform=ccrs.PlateCarree(),
             cmap=cmapStd,extent='both')
 # Draw the coastines for each subplot
@@ -207,7 +215,7 @@ fig,axs= plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()},figsize=(8,1
 
 lat,lon=climb.latlon(par[0])
 lons, lats = np.meshgrid(par[0][lon] ,par[0][lat])
-CS1=axs.contourf(lons,lats, 10*par[0][:,:],clevsT,
+CS1=axs.contourf(lons,lats, 10*par[0][:,:],#clevsT,
                 transform=ccrs.PlateCarree(),
                 cmap=cmapT,extent='both')
 levels=[0,0.1,1.0]
